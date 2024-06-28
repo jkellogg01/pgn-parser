@@ -1,6 +1,9 @@
 use std::{cmp::Ordering, fmt::Display};
 
 pub enum Token {
+    Illegal(String),
+    EOF,
+
     MoveNumber(String), // the literal will store ellipses vs period info for now
     Ident(String),      // this is for the first half of a tag
     Literal(String),    // this is for the second half, which has double quotes
@@ -33,11 +36,19 @@ pub enum Token {
     Castle,
     Dash,
     Star, // i think the star means "this is the end of the file but the game is not over"?
+    Lsquare,
+    Rsquare,
+    Lcurly,
+    Rcurly,
+    Lparen,
+    Rparen,
 }
 
 impl Display for Token {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            Token::Illegal(x) => write!(f, "Illegal: {x}"),
+            Token::EOF => write!(f, "EOF"),
             Token::MoveNumber(x) => write!(f, "Move {x}"),
             Token::Ident(x) => write!(f, "Ident {x}"),
             Token::Literal(x) => write!(f, "Literal {x}"),
@@ -58,6 +69,12 @@ impl Display for Token {
             Token::Castle => write!(f, "Castle"),
             Token::Dash => write!(f, "Dash"),
             Token::Star => write!(f, "Asterisk"),
+            Token::Lsquare => write!(f, "Left bracket"),
+            Token::Rsquare => write!(f, "Right bracket"),
+            Token::Lcurly => write!(f, "Left brace"),
+            Token::Rcurly => write!(f, "Right brace"),
+            Token::Lparen => write!(f, "Left paren"),
+            Token::Rparen => write!(f, "Right paren"),
         }
     }
 }
