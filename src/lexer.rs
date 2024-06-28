@@ -1,4 +1,4 @@
-use std::cmp::Ordering;
+use std::{cmp::Ordering, fmt::Display};
 
 pub enum Token {
     MoveNumber(String), // the literal will store ellipses vs period info for now
@@ -17,6 +17,11 @@ pub enum Token {
     Rank(char),
     File(char),
 
+    // Game results
+    WhiteWin,
+    BlackWin,
+    Draw,
+
     // Symbols
     Takes,
     Check,
@@ -27,6 +32,34 @@ pub enum Token {
     // that into a move
     Castle,
     Dash,
+    Star, // i think the star means "this is the end of the file but the game is not over"?
+}
+
+impl Display for Token {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Token::MoveNumber(x) => write!(f, "Move {x}"),
+            Token::Ident(x) => write!(f, "Ident {x}"),
+            Token::Literal(x) => write!(f, "Literal {x}"),
+            Token::King => write!(f, "King"),
+            Token::Queen => write!(f, "Queen"),
+            Token::Rook => write!(f, "Rook"),
+            Token::Bishop => write!(f, "Bishop"),
+            Token::Knight => write!(f, "Knight"),
+            Token::Rank(x) => write!(f, "Rank {x}"),
+            Token::File(x) => write!(f, "File {x}"),
+            Token::WhiteWin => write!(f, "White Wins"),
+            Token::BlackWin => write!(f, "Black Wins"),
+            Token::Draw => write!(f, "Draw"),
+            Token::Takes => write!(f, "Takes"),
+            Token::Check => write!(f, "Check"),
+            Token::Mate => write!(f, "Checkmate"),
+            Token::Promote => write!(f, "Promote"),
+            Token::Castle => write!(f, "Castle"),
+            Token::Dash => write!(f, "Dash"),
+            Token::Star => write!(f, "Asterisk"),
+        }
+    }
 }
 
 pub struct Lexer {
