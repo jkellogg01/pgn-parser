@@ -142,36 +142,23 @@ impl Lexer {
     }
 
     fn process_number(&mut self) -> Token {
-        let start_digit = self.input[self.position];
-        match self.peek() {
-            b'-' => match start_digit {
-                b'1' => self.consume("-0", "malformed white victory", Token::WhiteWin),
-                b'0' => self.consume("-1", "malformed black victory", Token::BlackWin),
-                _ => Token::Illegal(String::from("man idk what the fuck you did here")),
-            }
-            b'/' => {
-                if start_digit != b'1' {
-                    Token::Illegal(String::from("malformed draw"))
-                } else {
-                    self.consume("/2-1/2", "malformed draw", Token::Draw)
-                }
-            }
-            b'.' | _ if self.peek().is_ascii_digit() => {
-                let start = self.position;
-                match self.seek(b'.') {
-                    Some(t) => t,
-                    None => {
-                        while self.peek() == b'.' {
-                            self.advance();
-                        }
-                        Token::MoveNumber(
-                            String::from_utf8_lossy(&self.input[start..self.read_position])
-                                .to_string(),
-                        )
+        match (self.input[self.position], self.advance()) {
+            (b'1', b'/') => self.consume("2-1/2", "malformed draw", Token::Draw),
+            (b'1', b'-') => self.consume("0", "malformed white victory", Token::WhiteWin),
+            (b'0', b'-') => self.consume("1", "malformed black victory", Token::BlackWin),
+            (x, b'.') => Token::MoveNumber(String::from_utf8_lossy(vec![x, b'.'].as_slice()).to_string()),
+            (x, y) if y.is_ascii_digit() => {
+                let mut literal = vec![x, y];
+                if let None = self.seek(b'.') {
+                    while self.peek() == b'.' {
+                        literal.push(self.advance());
                     }
+                    Token::MoveNumber(String::from_utf8_lossy(literal.as_slice()).to_string())
+                } else {
+                    Token::Illegal(String::from("multi-digit formation did not terminate before eof"))
                 }
             }
-            _ => Token::Rank(self.input[self.position]),
+            (x, _) => Token::Rank(x),
         }
     }
 
