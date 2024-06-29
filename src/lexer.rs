@@ -1,4 +1,4 @@
-use std::{cmp::Ordering, fmt::Display};
+use std::fmt::Display;
 
 pub enum Token {
     Illegal(String),
@@ -17,8 +17,8 @@ pub enum Token {
     // pawns do not have a corresponding token in pgn
 
     // Location Data
-    Rank(char),
-    File(char),
+    Rank(u8),
+    File(u8),
 
     // Game results
     WhiteWin,
@@ -96,6 +96,17 @@ impl Lexer {
         return lex;
     }
 
+    pub fn next_token(&mut self) -> Token {
+        self.skip_whitespace();
+
+        let c = self.advance();
+        match c {
+            b'0'..=b'9' => self.process_number(),
+            0 => Token::EOF,
+            _ => Token::Illegal(String::from("unrecognized character")),
+        }
+    }
+
     fn advance(&mut self) -> u8 {
         let result = self.peek();
         self.position = self.read_position;
@@ -105,8 +116,68 @@ impl Lexer {
 
     fn peek(&self) -> u8 {
         match self.read_position.cmp(&self.input.len()) {
-            Ordering::Less => self.input[self.read_position],
+            std::cmp::Ordering::Less => self.input[self.read_position],
             _ => 0,
+        }
+    }
+
+    fn seek(&mut self, c: u8) -> Option<Token> {
+        while self.peek() != c {
+            if self.peek() == 0 {
+                return Some(Token::Illegal(String::from(
+                    "Reached end of file before seek termination",
+                )));
+            }
+            self.advance();
+        }
+        None
+    }
+
+    fn consume(&mut self, s: &str, msg: &str, t: Token) -> Token {
+        if s.bytes().fold(false, |a, v| a || self.advance() != v) {
+            Token::Illegal(String::from(msg))
+        } else {
+            t
+        }
+    }
+
+    fn process_number(&mut self) -> Token {
+        let start_digit = self.input[self.position];
+        match self.peek() {
+            b'-' => match start_digit {
+                b'1' => self.consume("-0", "malformed white victory", Token::WhiteWin),
+                b'0' => self.consume("-1", "malformed black victory", Token::BlackWin),
+                _ => Token::Illegal(String::from("man idk what the fuck you did here")),
+            }
+            b'/' => {
+                if start_digit != b'1' {
+                    Token::Illegal(String::from("malformed draw"))
+                } else {
+                    self.consume("/2-1/2", "malformed draw", Token::Draw)
+                }
+            }
+            b'.' | _ if self.peek().is_ascii_digit() => {
+                let start = self.position;
+                match self.seek(b'.') {
+                    Some(t) => t,
+                    None => {
+                        while self.peek() == b'.' {
+                            self.advance();
+                        }
+                        Token::MoveNumber(
+                            String::from_utf8_lossy(&self.input[start..self.read_position])
+                                .to_string(),
+                        )
+                    }
+                }
+            }
+            _ => Token::Rank(self.input[self.position]),
+        }
+    }
+
+    fn skip_whitespace(&mut self) {
+        while self.peek().is_ascii_whitespace() {
+            self.advance();
         }
     }
 }
