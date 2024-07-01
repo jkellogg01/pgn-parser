@@ -127,18 +127,6 @@ impl Lexer {
         }
     }
 
-    fn seek(&mut self, c: u8) -> Option<Token> {
-        while self.peek() != c {
-            if self.peek() == 0 {
-                return Some(Token::Illegal(String::from(
-                    "Reached end of file before seek termination",
-                )));
-            }
-            self.advance();
-        }
-        None
-    }
-
     fn consume(&mut self, s: &str, msg: &str, t: Token) -> Token {
         if s.bytes().fold(false, |a, v| a || self.advance() != v) {
             Token::Illegal(String::from(msg))
@@ -161,16 +149,20 @@ impl Lexer {
             }
             (x, y) if y.is_ascii_digit() => {
                 let mut literal = vec![x, y];
-                if let None = self.seek(b'.') {
-                    while self.peek() == b'.' {
-                        literal.push(self.advance());
+                loop {
+                    let c = self.advance();
+                    if c == b'.' {
+                        break;
                     }
-                    Token::Turn(String::from_utf8_lossy(literal.as_slice()).to_string())
-                } else {
-                    Token::Illegal(String::from(
-                        "multi-digit formation did not terminate before eof",
-                    ))
+                    if c == 0 {
+                        return Token::Illegal(String::from("multi-digit formation did not terminate before eof"));
+                    }
+                    literal.push(c);
                 }
+                while self.peek() == b'.' {
+                    literal.push(self.advance())
+                }
+                Token::Turn(String::from_utf8_lossy(literal.as_slice()).to_string())
             }
             (x, _) => Token::Rank(x),
         }
