@@ -30,9 +30,6 @@ pub enum Token {
     Check,
     Mate,
     Promote,
-    // having tokens for long & short castles requires like four characters of lookahead, which I
-    // want to avoid so we'll make a token for O and a token for a dash and let the parser turn
-    // that into a move
     LongCastle,
     ShortCastle,
     Star, // i think the star means "this is the end of the file but the game is not over"?
@@ -108,6 +105,7 @@ impl Lexer {
             b'*' => Token::Star,
             b'0'..=b'9' => self.process_number(c),
             b'[' => self.process_tag_pair(),
+            b'O' => self.process_castle(),
             0 => Token::EOF,
             _ => Token::Illegal(String::from("unrecognized character")),
         }
@@ -128,11 +126,13 @@ impl Lexer {
     }
 
     fn consume(&mut self, s: &str, msg: &str, t: Token) -> Token {
-        if s.bytes().fold(false, |a, v| a || self.advance() != v) {
-            Token::Illegal(String::from(msg))
-        } else {
-            t
+        for c in s.bytes() {
+            if self.peek() != c {
+                return Token::Illegal(String::from(msg));
+            }
+            self.advance()
         }
+        t
     }
 
     fn process_number(&mut self, c: u8) -> Token {
@@ -155,7 +155,9 @@ impl Lexer {
                         break;
                     }
                     if c == 0 {
-                        return Token::Illegal(String::from("multi-digit formation did not terminate before eof"));
+                        return Token::Illegal(String::from(
+                            "multi-digit formation did not terminate before eof",
+                        ));
                     }
                     literal.push(c);
                 }
@@ -200,6 +202,21 @@ impl Lexer {
             String::from_utf8_lossy(key_literal.as_slice()).to_string(),
             String::from_utf8_lossy(val_literal.as_slice()).to_string(),
         )
+    }
+
+    fn process_castle(&mut self) -> Token {
+        if let Token::ShortCastle = self.consume("-O", "malformed short castle", Token::ShortCastle)
+        {
+            if let Token::Illegal(_) =
+                self.consume("-O", "malformed long castle", Token::LongCastle)
+            {
+                Token::ShortCastle
+            } else {
+                Token::LongCastle
+            }
+        } else {
+            Token::Illegal(String::from("malformed castle"))
+        }
     }
 
     fn skip_whitespace(&mut self) {
