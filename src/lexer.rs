@@ -141,14 +141,18 @@ impl Lexer {
             (b'1', b'-') => self.consume("0", "malformed white victory", Token::WhiteWin),
             (b'0', b'-') => self.consume("1", "malformed black victory", Token::BlackWin),
             (x, b'.') => {
-                let mut literal = vec![x, b'.'];
+                let mut literal = String::new();
+                literal.push(x as char);
+                literal.push('.');
                 while self.peek() == b'.' {
-                    literal.push(self.advance());
+                    literal.push(self.advance() as char);
                 }
-                Token::Turn(String::from_utf8_lossy(literal.as_slice()).to_string())
+                Token::Turn(literal)
             }
             (x, y) if y.is_ascii_digit() => {
-                let mut literal = vec![x, y];
+                let mut literal = String::new();
+                literal.push(x as char);
+                literal.push(y as char);
                 loop {
                     let c = self.advance();
                     if c == b'.' {
@@ -159,19 +163,19 @@ impl Lexer {
                             "multi-digit formation did not terminate before eof",
                         ));
                     }
-                    literal.push(c);
+                    literal.push(c as char);
                 }
                 while self.peek() == b'.' {
-                    literal.push(self.advance())
+                    literal.push(self.advance() as char)
                 }
-                Token::Turn(String::from_utf8_lossy(literal.as_slice()).to_string())
+                Token::Turn(literal)
             }
             (x, _) => Token::Rank(x),
         }
     }
 
     fn process_tag_pair(&mut self) -> Token {
-        let mut key_literal: Vec<u8> = vec![];
+        let mut key_literal = String::new();
         loop {
             let c = self.advance();
             if c == b']' {
@@ -180,12 +184,12 @@ impl Lexer {
             if c.is_ascii_whitespace() {
                 break;
             }
-            key_literal.push(c);
+            key_literal.push(c as char);
         }
         if self.advance() != b'"' {
             return Token::Illegal(String::from("malformed tag pair"));
         }
-        let mut val_literal: Vec<u8> = vec![];
+        let mut val_literal = String::new();
         loop {
             let c = self.advance();
             if c == 0 {
@@ -196,27 +200,24 @@ impl Lexer {
             if c == b'"' {
                 break;
             }
-            val_literal.push(c);
+            val_literal.push(c as char);
         }
         if self.advance() != b']' {
             return Token::Illegal(String::from("malformed tag pair"));
         }
-        Token::TagPair(
-            String::from_utf8_lossy(key_literal.as_slice()).to_string(),
-            String::from_utf8_lossy(val_literal.as_slice()).to_string(),
-        )
+        Token::TagPair(key_literal, val_literal)
     }
 
     fn process_comment(&mut self) -> Token {
-        let mut literal: Vec<u8> = Vec::new();
+        let mut literal = String::new();
         loop {
             match self.advance() {
                 0 => return Token::Illegal(String::from("unterminated comment")),
                 b'}' => break,
-                x => literal.push(x),
+                x => literal.push(x as char),
             }
         }
-        Token::Comment(String::from_utf8_lossy(literal.as_slice()).to_string())
+        Token::Comment(literal)
     }
 
     fn process_castle(&mut self) -> Token {
