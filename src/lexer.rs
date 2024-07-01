@@ -6,6 +6,7 @@ pub enum Token {
 
     Turn(String), // the literal will store ellipses vs period info for now
     TagPair(String, String),
+    Comment(String),
 
     // Pieces
     King,
@@ -35,8 +36,6 @@ pub enum Token {
     LongCastle,
     ShortCastle,
     Star, // i think the star means "this is the end of the file but the game is not over"?
-    Lcurly,
-    Rcurly,
     Lparen,
     Rparen,
 }
@@ -46,15 +45,16 @@ impl Display for Token {
         match self {
             Token::Illegal(x) => write!(f, "Illegal: {x}"),
             Token::EOF => write!(f, "EOF"),
-            Token::Turn(x) => write!(f, "Move {x}"),
+            Token::Turn(x) => write!(f, "Move: {x}"),
             Token::TagPair(x, y) => write!(f, "Tag Pair: {x}-{y}"),
+            Token::Comment(x) => write!(f, "Comment: {x}"),
             Token::King => write!(f, "King"),
             Token::Queen => write!(f, "Queen"),
             Token::Rook => write!(f, "Rook"),
             Token::Bishop => write!(f, "Bishop"),
             Token::Knight => write!(f, "Knight"),
-            Token::Rank(x) => write!(f, "Rank {x}"),
-            Token::File(x) => write!(f, "File {x}"),
+            Token::Rank(x) => write!(f, "Rank: {x}"),
+            Token::File(x) => write!(f, "File: {x}"),
             Token::WhiteWin => write!(f, "White Wins"),
             Token::BlackWin => write!(f, "Black Wins"),
             Token::Draw => write!(f, "Draw"),
@@ -65,8 +65,6 @@ impl Display for Token {
             Token::LongCastle => write!(f, "Castle Queenside"),
             Token::ShortCastle => write!(f, "Castle Kingside"),
             Token::Star => write!(f, "Asterisk"),
-            Token::Lcurly => write!(f, "Left brace"),
-            Token::Rcurly => write!(f, "Right brace"),
             Token::Lparen => write!(f, "Left paren"),
             Token::Rparen => write!(f, "Right paren"),
         }
@@ -95,6 +93,19 @@ impl Lexer {
 
         let c = self.advance();
         match c {
+            b'K' => Token::King,
+            b'Q' => Token::Queen,
+            b'R' => Token::Rook,
+            b'B' => Token::Bishop,
+            b'N' => Token::Knight,
+            b'a'..=b'h' => Token::File(c),
+            b'x' => Token::Takes,
+            b'+' => Token::Check,
+            b'#' => Token::Mate,
+            b'=' => Token::Promote,
+            b'(' => Token::Lparen,
+            b')' => Token::Rparen,
+            b'*' => Token::Star,
             b'0'..=b'9' => self.process_number(c),
             b'[' => self.process_tag_pair(),
             0 => Token::EOF,
