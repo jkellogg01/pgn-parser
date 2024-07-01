@@ -43,15 +43,15 @@ impl Display for Token {
             Token::Illegal(x) => write!(f, "Illegal: {x}"),
             Token::EOF => write!(f, "EOF"),
             Token::Turn(x) => write!(f, "Move: {x}"),
-            Token::TagPair(x, y) => write!(f, "Tag Pair: {x}-{y}"),
+            Token::TagPair(x, y) => write!(f, "Tag Pair: [{x} \"{y}\"]"),
             Token::Comment(x) => write!(f, "Comment: {x}"),
             Token::King => write!(f, "King"),
             Token::Queen => write!(f, "Queen"),
             Token::Rook => write!(f, "Rook"),
             Token::Bishop => write!(f, "Bishop"),
             Token::Knight => write!(f, "Knight"),
-            Token::Rank(x) => write!(f, "Rank: {x}"),
-            Token::File(x) => write!(f, "File: {x}"),
+            Token::Rank(x) => write!(f, "Rank: {}", *x as char),
+            Token::File(x) => write!(f, "File: {}", *x as char),
             Token::WhiteWin => write!(f, "White Wins"),
             Token::BlackWin => write!(f, "Black Wins"),
             Token::Draw => write!(f, "Draw"),
@@ -76,12 +76,11 @@ pub struct Lexer {
 
 impl Lexer {
     pub fn new(input: String) -> Lexer {
-        let mut lex = Lexer {
+        let lex = Lexer {
             position: 0,
             read_position: 0,
             input: input.into_bytes(),
         };
-        lex.advance();
         return lex;
     }
 
@@ -105,9 +104,10 @@ impl Lexer {
             b'*' => Token::Star,
             b'0'..=b'9' => self.process_number(c),
             b'[' => self.process_tag_pair(),
+            b'{' => self.process_comment(),
             b'O' => self.process_castle(),
             0 => Token::EOF,
-            _ => Token::Illegal(String::from("unrecognized character")),
+            x => Token::Illegal(format!("unrecognized character {}", x as char)),
         }
     }
 
@@ -130,7 +130,7 @@ impl Lexer {
             if self.peek() != c {
                 return Token::Illegal(String::from(msg));
             }
-            self.advance()
+            self.advance();
         }
         t
     }
@@ -198,10 +198,25 @@ impl Lexer {
             }
             val_literal.push(c);
         }
+        if self.advance() != b']' {
+            return Token::Illegal(String::from("malformed tag pair"));
+        }
         Token::TagPair(
             String::from_utf8_lossy(key_literal.as_slice()).to_string(),
             String::from_utf8_lossy(val_literal.as_slice()).to_string(),
         )
+    }
+
+    fn process_comment(&mut self) -> Token {
+        let mut literal: Vec<u8> = Vec::new();
+        loop {
+            match self.advance() {
+                0 => return Token::Illegal(String::from("unterminated comment")),
+                b'}' => break,
+                x => literal.push(x),
+            }
+        }
+        Token::Comment(String::from_utf8_lossy(literal.as_slice()).to_string())
     }
 
     fn process_castle(&mut self) -> Token {
