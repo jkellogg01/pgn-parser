@@ -4,9 +4,8 @@ pub enum Token {
     Illegal(String),
     EOF,
 
-    Turn(String),    // the literal will store ellipses vs period info for now
-    Ident(String),   // this is for the first half of a tag
-    Literal(String), // this is for the second half, which has double quotes
+    Turn(String), // the literal will store ellipses vs period info for now
+    TagPair(String, String),
 
     // Pieces
     King,
@@ -36,8 +35,6 @@ pub enum Token {
     LongCastle,
     ShortCastle,
     Star, // i think the star means "this is the end of the file but the game is not over"?
-    Lsquare,
-    Rsquare,
     Lcurly,
     Rcurly,
     Lparen,
@@ -50,8 +47,7 @@ impl Display for Token {
             Token::Illegal(x) => write!(f, "Illegal: {x}"),
             Token::EOF => write!(f, "EOF"),
             Token::Turn(x) => write!(f, "Move {x}"),
-            Token::Ident(x) => write!(f, "Ident {x}"),
-            Token::Literal(x) => write!(f, "Literal {x}"),
+            Token::TagPair(x, y) => write!(f, "Tag Pair: {x}-{y}"),
             Token::King => write!(f, "King"),
             Token::Queen => write!(f, "Queen"),
             Token::Rook => write!(f, "Rook"),
@@ -69,8 +65,6 @@ impl Display for Token {
             Token::LongCastle => write!(f, "Castle Queenside"),
             Token::ShortCastle => write!(f, "Castle Kingside"),
             Token::Star => write!(f, "Asterisk"),
-            Token::Lsquare => write!(f, "Left bracket"),
-            Token::Rsquare => write!(f, "Right bracket"),
             Token::Lcurly => write!(f, "Left brace"),
             Token::Rcurly => write!(f, "Right brace"),
             Token::Lparen => write!(f, "Left paren"),
@@ -102,6 +96,7 @@ impl Lexer {
         let c = self.advance();
         match c {
             b'0'..=b'9' => self.process_number(c),
+            b'[' => self.process_tag_pair(),
             0 => Token::EOF,
             _ => Token::Illegal(String::from("unrecognized character")),
         }
@@ -168,6 +163,40 @@ impl Lexer {
             }
             (x, _) => Token::Rank(x),
         }
+    }
+
+    fn process_tag_pair(&mut self) -> Token {
+        let mut key_literal: Vec<u8> = vec![];
+        loop {
+            let c = self.advance();
+            if c == b']' {
+                return Token::Illegal(String::from("malformed tag pair"));
+            }
+            if c.is_ascii_whitespace() {
+                break;
+            }
+            key_literal.push(c);
+        }
+        if self.advance() != b'"' {
+            return Token::Illegal(String::from("malformed tag pair"));
+        }
+        let mut val_literal: Vec<u8> = vec![];
+        loop {
+            let c = self.advance();
+            if c == 0 {
+                return Token::Illegal(String::from(
+                    "tag pair contains unterminated string literal",
+                ));
+            }
+            if c == b'"' {
+                break;
+            }
+            val_literal.push(c);
+        }
+        Token::TagPair(
+            String::from_utf8_lossy(key_literal.as_slice()).to_string(),
+            String::from_utf8_lossy(val_literal.as_slice()).to_string(),
+        )
     }
 
     fn skip_whitespace(&mut self) {
