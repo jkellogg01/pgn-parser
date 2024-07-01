@@ -4,9 +4,9 @@ pub enum Token {
     Illegal(String),
     EOF,
 
-    MoveNumber(String), // the literal will store ellipses vs period info for now
-    Ident(String),      // this is for the first half of a tag
-    Literal(String),    // this is for the second half, which has double quotes
+    Turn(String),    // the literal will store ellipses vs period info for now
+    Ident(String),   // this is for the first half of a tag
+    Literal(String), // this is for the second half, which has double quotes
 
     // Pieces
     King,
@@ -33,8 +33,8 @@ pub enum Token {
     // having tokens for long & short castles requires like four characters of lookahead, which I
     // want to avoid so we'll make a token for O and a token for a dash and let the parser turn
     // that into a move
-    Castle,
-    Dash,
+    LongCastle,
+    ShortCastle,
     Star, // i think the star means "this is the end of the file but the game is not over"?
     Lsquare,
     Rsquare,
@@ -49,7 +49,7 @@ impl Display for Token {
         match self {
             Token::Illegal(x) => write!(f, "Illegal: {x}"),
             Token::EOF => write!(f, "EOF"),
-            Token::MoveNumber(x) => write!(f, "Move {x}"),
+            Token::Turn(x) => write!(f, "Move {x}"),
             Token::Ident(x) => write!(f, "Ident {x}"),
             Token::Literal(x) => write!(f, "Literal {x}"),
             Token::King => write!(f, "King"),
@@ -66,8 +66,8 @@ impl Display for Token {
             Token::Check => write!(f, "Check"),
             Token::Mate => write!(f, "Checkmate"),
             Token::Promote => write!(f, "Promote"),
-            Token::Castle => write!(f, "Castle"),
-            Token::Dash => write!(f, "Dash"),
+            Token::LongCastle => write!(f, "Castle Queenside"),
+            Token::ShortCastle => write!(f, "Castle Kingside"),
             Token::Star => write!(f, "Asterisk"),
             Token::Lsquare => write!(f, "Left bracket"),
             Token::Rsquare => write!(f, "Right bracket"),
@@ -101,7 +101,7 @@ impl Lexer {
 
         let c = self.advance();
         match c {
-            b'0'..=b'9' => self.process_number(),
+            b'0'..=b'9' => self.process_number(c),
             0 => Token::EOF,
             _ => Token::Illegal(String::from("unrecognized character")),
         }
@@ -141,21 +141,29 @@ impl Lexer {
         }
     }
 
-    fn process_number(&mut self) -> Token {
-        match (self.input[self.position], self.advance()) {
+    fn process_number(&mut self, c: u8) -> Token {
+        match (c, self.advance()) {
             (b'1', b'/') => self.consume("2-1/2", "malformed draw", Token::Draw),
             (b'1', b'-') => self.consume("0", "malformed white victory", Token::WhiteWin),
             (b'0', b'-') => self.consume("1", "malformed black victory", Token::BlackWin),
-            (x, b'.') => Token::MoveNumber(String::from_utf8_lossy(vec![x, b'.'].as_slice()).to_string()),
+            (x, b'.') => {
+                let mut literal = vec![x, b'.'];
+                while self.peek() == b'.' {
+                    literal.push(self.advance());
+                }
+                Token::Turn(String::from_utf8_lossy(literal.as_slice()).to_string())
+            }
             (x, y) if y.is_ascii_digit() => {
                 let mut literal = vec![x, y];
                 if let None = self.seek(b'.') {
                     while self.peek() == b'.' {
                         literal.push(self.advance());
                     }
-                    Token::MoveNumber(String::from_utf8_lossy(literal.as_slice()).to_string())
+                    Token::Turn(String::from_utf8_lossy(literal.as_slice()).to_string())
                 } else {
-                    Token::Illegal(String::from("multi-digit formation did not terminate before eof"))
+                    Token::Illegal(String::from(
+                        "multi-digit formation did not terminate before eof",
+                    ))
                 }
             }
             (x, _) => Token::Rank(x),
