@@ -155,15 +155,15 @@ impl Lexer {
                 literal.push(y as char);
                 loop {
                     let c = self.advance();
-                    if c == b'.' {
-                        break;
-                    }
                     if c == 0 {
                         return Token::Illegal(String::from(
                             "multi-digit formation did not terminate before eof",
                         ));
                     }
                     literal.push(c as char);
+                    if c == b'.' {
+                        break;
+                    }
                 }
                 while self.peek() == b'.' {
                     literal.push(self.advance() as char)
