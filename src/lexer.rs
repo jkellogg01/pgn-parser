@@ -84,33 +84,6 @@ impl Lexer {
         return lex;
     }
 
-    pub fn next_token(&mut self) -> Token {
-        self.skip_whitespace();
-
-        let c = self.advance();
-        match c {
-            b'K' => Token::King,
-            b'Q' => Token::Queen,
-            b'R' => Token::Rook,
-            b'B' => Token::Bishop,
-            b'N' => Token::Knight,
-            b'a'..=b'h' => Token::File(c),
-            b'x' => Token::Takes,
-            b'+' => Token::Check,
-            b'#' => Token::Mate,
-            b'=' => Token::Promote,
-            b'(' => Token::Lparen,
-            b')' => Token::Rparen,
-            b'*' => Token::Star,
-            b'0'..=b'9' => self.process_number(c),
-            b'[' => self.process_tag_pair(),
-            b'{' => self.process_comment(),
-            b'O' => self.process_castle(),
-            0 => Token::EOF,
-            x => Token::Illegal(format!("unrecognized character {}", x as char)),
-        }
-    }
-
     fn advance(&mut self) -> u8 {
         let result = self.peek();
         self.position = self.read_position;
@@ -246,6 +219,30 @@ impl Iterator for Lexer {
     type Item = Token;
 
     fn next(&mut self) -> Option<Token> {
-        Some(self.next_token())
+        self.skip_whitespace();
+
+        let c = self.advance();
+        match c {
+            0 => None,
+            b'K' => Some(Token::King),
+            b'Q' => Some(Token::Queen),
+            b'R' => Some(Token::Rook),
+            b'B' => Some(Token::Bishop),
+            b'N' => Some(Token::Knight),
+            b'a'..=b'h' => Some(Token::File(c)),
+            b'x' => Some(Token::Takes),
+            b'+' => Some(Token::Check),
+            b'#' => Some(Token::Mate),
+            b'=' => Some(Token::Promote),
+            b'(' => Some(Token::Lparen),
+            b')' => Some(Token::Rparen),
+            b'*' => Some(Token::Star),
+            b'0'..=b'9' => Some(self.process_number(c)),
+            b'[' => Some(self.process_tag_pair()),
+            b'{' => Some(self.process_comment()),
+            b'O' => Some(self.process_castle()),
+            x => Some(Token::Illegal(format!("unrecognized character {}", x as char))),
+        }
     }
+
 }

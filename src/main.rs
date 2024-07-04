@@ -1,5 +1,4 @@
 pub mod lexer;
-pub mod move_tree;
 
 use std::fs;
 
@@ -13,20 +12,19 @@ fn main() {
         let Ok(data) = fs::read_to_string(entry.path()) else {
             continue;
         };
-        let mut lex = Lexer::new(data);
         println!(
             "=== tokenizing: {} ===",
             entry.file_name().to_string_lossy()
         );
-        loop {
-            match lex.next_token() {
+        Lexer::new(data).for_each(|tok| {
+            match tok {
                 Token::EOF => {
                     println!("\t{}", Token::EOF);
-                    break;
+                    return;
                 }
                 x => println!("\t{x}"),
             }
-        }
+        });
         println!("=== end of file ===");
     }
 }
