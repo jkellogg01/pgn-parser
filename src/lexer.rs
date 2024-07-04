@@ -42,7 +42,7 @@ impl Display for Token {
         match self {
             Token::Illegal(x) => write!(f, "Illegal: {x}"),
             Token::EOF => write!(f, "EOF"),
-            Token::Turn(x) => write!(f, "Move: {x}"),
+            Token::Turn(x) => write!(f, "Turn: {x}"),
             Token::TagPair(x, y) => write!(f, "Tag Pair: [{x} \"{y}\"]"),
             Token::Comment(x) => write!(f, "Comment: {x}"),
             Token::King => write!(f, "King"),
@@ -239,5 +239,13 @@ impl Lexer {
         while self.peek().is_ascii_whitespace() {
             self.advance();
         }
+    }
+}
+
+impl Iterator for Lexer {
+    type Item = Token;
+
+    fn next(&mut self) -> Option<Token> {
+        Some(self.next_token())
     }
 }

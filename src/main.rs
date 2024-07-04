@@ -1,4 +1,5 @@
 pub mod lexer;
+pub mod move_tree;
 
 use std::fs;
 
